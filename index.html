@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+    <title>마스크 지도</title>
+    <script type="text/javascript" src="https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=z8koe4wu77"></script>
+    <script type="text/javascript" src="https://openapi.map.naver.com/openapi/v3/maps.js?clientId=z8koe4wu77&submodules=geocoder"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+    body {
+        position: absolute;
+        width: 100%;
+        background-color: black;
+    }
+    header {
+        text-align: center;
+        height: 35px;
+        font-size: 15px;
+        color: white;
+    }
+
+    header #region {
+        width: 50%;
+    }
+
+    header .btn {
+        display: inline-block;
+        padding: 5px;
+        margin-left: 3px;
+        color: white;
+        border: 1px solid white;
+        border-radius: 3px;
+        cursor: pointer;
+        width: 25%;
+    }
+    footer {
+        text-align: center;
+        vertical-align: middle;
+        line-height: 35px;
+        height: 35px;
+        font-size: 15px;
+        color: white;
+    }
+
+    footer .btn {
+        display: inline-block;
+        padding: 5px;
+        margin: 3px;
+        color: white;
+        border: 1px solid white;
+        border-radius: 3px;
+        cursor: pointer;
+        width: 40%;
+    }
+
+    .content {
+        height: 80%;
+    }
+
+    #map {
+        width: 100%;
+        height: 100%;
+    }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="search">
+            <input type="text" placeholder="찾을 주소 입력" id="region">
+            <div id="searchBtn" class="btn">주소 이동</div>
+        </div>
+    </header>
+    <div class="content">
+        <div id="map"></div>
+    </div>
+    <footer>
+        <div id="currentSearchBtn" class="btn">이 지역에서 찾기</div>
+        <label><input type="checkbox" id="isExistOnly"> 있는 곳만</label>
+    </footer>
+    <script>
+        document.getElementById('map').style = `width: 99%; height: ${document.documentElement.clientHeight - 100}px;`;
+        document.getElementById('searchBtn').addEventListener('click', () => {
+            searchAddressToCoordinate(document.getElementById('region').value);
+        });
+        document.getElementById('currentSearchBtn').addEventListener('click', () => {
+            changeGeolocationCurrentCallback();
+        });
+        // naver.maps.Event.addListener(map, 'mouseup', changeGeolocationCallback);
+        // naver.maps.Event.addListener(map, 'touchend', changeGeolocationCallback);
+
+        let markers = [];
+        let pos;
+
+        const REMAIN_STATS = {
+            plenty: '100개 이상',
+            some: '30개 이상 100개미만',
+            few: '2개 이상 30개 미만',
+            empty: '1개 이하',
+        };
+
+        const map = new naver.maps.Map('map', {
+            center: new naver.maps.LatLng(37.4773044,126.97564889999998),
+            zoom: 16,
+            minZoom: 13,
+            zoomControl: true,
+            zoomControlOptions: {
+                position: naver.maps.Position.TOP_RIGHT
+            },
+            scaleControl: true,
+            scaleControlOptions: {
+                position: naver.maps.Position.TOP_LEFT
+            },
+            mapTypeId: naver.maps.MapTypeId.NORMAL
+        });
+
+        const infoWindow = new naver.maps.InfoWindow({
+            anchorSkew: true
+        });
+
+        function searchAddressToCoordinate(address) {
+            naver.maps.Service.geocode({
+                query: address
+            }, function(status, response) {
+                if (status === naver.maps.Service.Status.ERROR) {
+                    return alert('Something Wrong!');
+                }
+
+                if (response.v2.meta.totalCount === 0) {
+                    return alert('totalCount' + response.v2.meta.totalCount);
+                }
+
+                let item = response.v2.addresses[0],
+                    point = new naver.maps.Point(item.x, item.y);
+
+                infoWindow.setContent([
+                    '<div style="padding:5px;min-width:150px;">',
+                    '<h4 style="margin-top:5px;">검색 주소 : '+ address +'</h4>',
+                    '</div>'
+                ].join('\n'));
+
+                map.setCenter(point);
+                infoWindow.open(map, point);
+            });
+        }
+
+        function changeGeolocationCallback(e) {
+            onSuccessGeolocation({
+                coords: {
+                    latitude: e.latlng._lat,
+                    longitude: e.latlng._lng
+                }
+            })
+        }
+
+        function changeGeolocationCurrentCallback() {
+            const currentPos = map.getCenter();
+            onSuccessGeolocation({
+                coords: {
+                    latitude: currentPos._lat,
+                    longitude: currentPos._lng
+                }
+            })
+        }
+
+        function showMarker(map, marker) {
+            if (marker.setMap()) return;
+            marker.setMap(map);
+        }
+
+        function hideMarker(map, marker) {
+            if (!marker.setMap()) return;
+            marker.setMap(null);
+        }
+
+        function createGeolocation({addr, name, remain_stat, lat, lng}) {
+            const isExistOnly = document.getElementById('isExistOnly').checked;
+            if (isExistOnly && (!remain_stat || remain_stat === 'empty')) return;
+
+            var marker = new naver.maps.Marker({
+                position: new naver.maps.LatLng(lat, lng),
+                map: map,
+                icon: `./pin_${remain_stat}.svg`
+            });
+
+            markers.push(marker);
+
+            naver.maps.Event.addListener(marker, 'click', () => {
+                infoWindow.setContent(`<div style="width:150px;text-align:center;padding:10px;">${name}<br>${REMAIN_STATS[remain_stat]}</div>`);
+                infoWindow.open(map, marker);
+            });
+        }
+
+        function getApiUri(position) {
+            const apiUri = 'https://8oi9s0nnth.apigw.ntruss.com/corona19-masks/v1/storesByGeo/json';
+            const searchMeter = 1000;
+
+            return `${apiUri}?lat=${position.coords.latitude}&lng=${position.coords.longitude}&m=${searchMeter}`;
+        }
+
+        async function onSuccessGeolocation(position) {
+            markers.map((m) => {
+                hideMarker(map, m);
+            });
+            infoWindow.close();
+
+            const location = new naver.maps.LatLng(position.coords.latitude,
+                                                position.coords.longitude);
+
+            map.setCenter(location);
+            infoWindow.setContent('<div class="geo-location">' + 'geolocation.getCurrentPosition() 위치' + '</div>');
+
+            const res = await axios.get(getApiUri(position));
+
+            res.data.stores.map(d => {
+                createGeolocation(d);
+            });
+        }
+
+        function onErrorGeolocation() {
+            var center = map.getCenter();
+
+            infoWindow.setContent('<div class="geo-location error">' +
+                '<h5 style="margin-bottom:5px;color:#f00;">Geolocation failed!</h5>'+ "latitude: "+ center.lat() +"<br />longitude: "+ center.lng() +'</div>');
+
+            infoWindow.open(map, center);
+        }
+
+        window.onload = async function () {
+            if (!navigator.geolocation) {
+                var center = map.getCenter();
+                infoWindow.setContent('<div class="geo-location"><h5 style="margin-bottom:5px;color:#f00;">Geolocation not supported</h5></div>');
+                infoWindow.open(map, center);
+            }
+        };
+    </script>
+</body>
+</html>
