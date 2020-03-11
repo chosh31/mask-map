@@ -161,30 +161,40 @@
         function searchAddressToCoordinate(address) {
             if (!address) return;
             document.getElementById('overlay').classList.add('show');
-            naver.maps.Service.geocode({
-                query: address
-            }, function(status, response) {
-                if (status === naver.maps.Service.Status.ERROR) {
-                    return alert('Something Wrong!');
-                }
+            try {
+                naver.maps.Service.geocode({
+                    query: address
+                }, function(status, response) {
+                    if (status === naver.maps.Service.Status.ERROR) {
+                        alert('검색 중 에러가 발생했습니다!');
+                        document.getElementById('overlay').classList.remove('show');
+                        return;
+                    }
 
-                if (response.v2.meta.totalCount === 0) {
-                    return alert('totalCount' + response.v2.meta.totalCount);
-                }
+                    if (response.v2.meta.totalCount === 0) {
+                        alert('검색 결과가 없습니다.');
+                        document.getElementById('overlay').classList.remove('show');
+                        return;
+                    }
 
-                let item = response.v2.addresses[0],
-                    point = new naver.maps.Point(item.x, item.y);
+                    let item = response.v2.addresses[0],
+                        point = new naver.maps.Point(item.x, item.y);
 
-                infoWindow.setContent([
-                    '<div style="padding:5px;min-width:150px;">',
-                    '<h4 style="margin-top:5px;">검색 주소 : '+ address +'</h4>',
-                    '</div>'
-                ].join('\n'));
+                    infoWindow.setContent([
+                        '<div style="padding:5px;min-width:150px;">',
+                        '<h4 style="margin-top:5px;">검색 주소 : '+ address +'</h4>',
+                        '</div>'
+                    ].join('\n'));
 
-                map.setCenter(point);
-                infoWindow.open(map, point);
+                    map.setCenter(point);
+                    infoWindow.open(map, point);
+                    document.getElementById('overlay').classList.remove('show');
+                });
+            } catch(e) {
+                console.error(e);
+            } finally {
                 document.getElementById('overlay').classList.remove('show');
-            });
+            }
         }
 
         function changeGeolocationCallback(e) {
