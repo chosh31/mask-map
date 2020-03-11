@@ -98,6 +98,10 @@
         pointer-events: none;
     }
 
+    .sub {
+        font-size: 8px;
+    }
+
 
     </style>
 </head>
@@ -226,7 +230,17 @@
             marker.setMap(null);
         }
 
-        function createGeolocation({addr, name, remain_stat, lat, lng}) {
+        function convertDateString(date) {
+            const yyyy = date.getFullYear();
+            const mm = date.getMonth() < 9 ? "0" + (date.getMonth() + 1) : (date.getMonth() + 1);
+            const dd = date.getDate() < 10 ? "0" + date.getDate() : date.getDate();
+            const hh = date.getHours() < 10 ? "0" + date.getHours() : date.getHours();
+            const min = date.getMinutes() < 10 ? "0" + date.getMinutes() : date.getMinutes();
+            const ss = date.getSeconds() < 10 ? "0" + date.getSeconds() : date.getSeconds();
+            return `${hh}시 ${min}분 ${ss}초<br>(${yyyy}년 ${mm}월 ${dd}일)`;
+        }
+
+        function createGeolocation({addr, code, created_at, name, remain_stat, lat, lng}) {
             const isExistOnly = document.getElementById('isExistOnly').checked;
             if (isExistOnly && (!remain_stat || remain_stat === 'empty' || remain_stat === undefined || remain_stat === null)) return;
 
@@ -239,7 +253,15 @@
             markers.push(marker);
 
             naver.maps.Event.addListener(marker, 'click', () => {
-                infoWindow.setContent(`<div style="width:150px;text-align:center;padding:10px;">${name}<br>${REMAIN_STATS[remain_stat]}</div>`);
+                const createDate = new Date(created_at);
+                infoWindow.setContent(`
+                <div style="width:150px;text-align:center;padding:10px;">
+                    <a href="https://map.naver.com/?elat=${lat}&amp;elng=${lng}&amp;eelat=&amp;eelng=&amp;eText=${name}" target="_map_icon" class="btn_icon" onclick="return goOtherCR(this, 'a=loc_ipt*f.way&amp;r=2&amp;i=20488216&amp;g=mpi%3D09590520%3AqcT_%ED%8F%89%ED%99%94%EC%95%BD%EA%B5%AD&amp;u='+urlencode(urlexpand(this.href)));"><img width="39" height="18" title="길찾기" alt="길찾기" src="https://ssl.pstatic.net/sstatic/search/img3/btn_fndmap.gif"></a>
+                    <a>${name} (${code})</a>
+                    <p>${REMAIN_STATS[remain_stat]}</p>
+                    <p class="sub">${addr}</p>
+                    <p class="sub">생성일: ${convertDateString(new Date(created_at))}</p>
+                </div>`);
                 infoWindow.open(map, marker);
             });
         }
@@ -267,6 +289,8 @@
             
             try {
                 const res = await axios.get(getApiUri(position), {timeout: 20000});
+
+                console.log(res);
 
                 res.data.stores.map(d => {
                     createGeolocation(d);
