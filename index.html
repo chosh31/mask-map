@@ -21,6 +21,15 @@
         color: white;
     }
 
+    header .info {
+        display: inline-block;
+        border: 1px solid white;
+        padding: 5px;
+        border-radius: 5px;
+        margin-left: 10px;
+        float: left;
+    }
+
     header #region {
         width: 50%;
     }
@@ -63,9 +72,39 @@
         width: 100%;
         height: 100%;
     }
+
+    .overlay {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.2);
+        opacity: 0;
+    }
+
+    .overlay .message {
+        padding: 10px;
+        border: 1px solid black;
+        border-radius: 3px;
+        background-color: white;
+    }
+
+    .overlay.show {
+        display: flex;
+        z-index: 999;
+        opacity: 1;
+        pointer-events: none;
+    }
+
+
     </style>
 </head>
 <body>
+    <div id="overlay" class="overlay">
+        <div class="message">처리 중 입니다...</div>
+    </div>
     <header>
         <div class="search">
             <input type="text" placeholder="찾을 주소 입력" id="region">
@@ -76,8 +115,8 @@
         <div id="map"></div>
     </div>
     <footer>
-        <div id="currentSearchBtn" class="btn">이 지역에서 찾기</div>
         <label><input type="checkbox" id="isExistOnly"> 있는 곳만</label>
+        <div id="currentSearchBtn" class="btn">이 지역에서 찾기</div>
     </footer>
     <script>
         document.getElementById('map').style = `width: 99%; height: ${document.documentElement.clientHeight - 100}px;`;
@@ -120,6 +159,8 @@
         });
 
         function searchAddressToCoordinate(address) {
+            if (!address) return;
+            document.getElementById('overlay').classList.add('show');
             naver.maps.Service.geocode({
                 query: address
             }, function(status, response) {
@@ -142,6 +183,7 @@
 
                 map.setCenter(point);
                 infoWindow.open(map, point);
+                document.getElementById('overlay').classList.remove('show');
             });
         }
 
@@ -176,12 +218,12 @@
 
         function createGeolocation({addr, name, remain_stat, lat, lng}) {
             const isExistOnly = document.getElementById('isExistOnly').checked;
-            if (isExistOnly && (!remain_stat || remain_stat === 'empty')) return;
+            if (isExistOnly && (!remain_stat || remain_stat === 'empty' || remain_stat === undefined || remain_stat === null)) return;
 
             var marker = new naver.maps.Marker({
                 position: new naver.maps.LatLng(lat, lng),
                 map: map,
-                icon: `./pin_${remain_stat}.svg`
+                icon: `./pin_${remain_stat === undefined || remain_stat === null ? 'empty' : remain_stat}.svg`
             });
 
             markers.push(marker);
@@ -200,6 +242,7 @@
         }
 
         async function onSuccessGeolocation(position) {
+            document.getElementById('overlay').classList.add('show');
             markers.map((m) => {
                 hideMarker(map, m);
             });
@@ -211,11 +254,19 @@
             map.setCenter(location);
             infoWindow.setContent('<div class="geo-location">' + 'geolocation.getCurrentPosition() 위치' + '</div>');
 
-            const res = await axios.get(getApiUri(position));
+            
+            try {
+                const res = await axios.get(getApiUri(position), {timeout: 20000});
 
-            res.data.stores.map(d => {
-                createGeolocation(d);
-            });
+                res.data.stores.map(d => {
+                    createGeolocation(d);
+                });
+            } catch(e) {
+                alert(`위치 정보 조회가 정상적이지 않습니다. 잠시후 다시 시도해 주세요..\n${e.message}`);
+                console.error(e);
+            } finally {
+                document.getElementById('overlay').classList.remove('show');
+            }
         }
 
         function onErrorGeolocation() {
