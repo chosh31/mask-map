@@ -406,6 +406,7 @@
         }
 
         function onErrorGeolocation(e) {
+            circle.setMap(null);
             const center = map.getCenter();
 
             infoWindow.setContent(`
@@ -424,7 +425,7 @@
                 return;
             }
 
-            const positionOption = { timeout: 30000, enableHighAccuracy: true };
+            const positionOption = { timeout: 10000, enableHighAccuracy: false };
             navigator.geolocation.getCurrentPosition(onSuccessGeolocation, onErrorGeolocation, positionOption);
         };
     </script>
