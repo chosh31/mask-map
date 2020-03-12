@@ -244,6 +244,9 @@
         </div>`;
 
         naver.maps.Event.once(map, 'init_stylemap', function() {
+            if (!navigator.geolocation) {
+                return;
+            }
             const customControl = new naver.maps.CustomControl(currentBtnHtml, {
                 position: naver.maps.Position.BOTTOM_LEFT
             });
