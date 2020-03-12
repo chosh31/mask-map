@@ -131,6 +131,18 @@
         opacity: 0;
         font-size: 0;
     }
+
+    .btn-wrapper {
+        position: relative;
+        bottom: 50px;
+        left: -84px;
+        margin: 5px;
+        padding: 5px;
+        background-color: white;
+        border-radius: 5px;
+        border: 1px solid black;
+        font-size: 0;
+    }
     </style>
 </head>
 <body>
@@ -172,7 +184,6 @@
         };
 
         const map = new naver.maps.Map('map', {
-            center: new naver.maps.LatLng(37.4773044,126.97564889999998),
             zoom: 16,
             minZoom: 13,
             zoomControl: true,
@@ -181,7 +192,7 @@
             },
             scaleControl: true,
             scaleControlOptions: {
-                position: naver.maps.Position.BOTTOM_LEFT
+                position: naver.maps.Position.BOTTOM_RIGHT
             },
             mapTypeId: naver.maps.MapTypeId.NORMAL
         });
@@ -190,7 +201,15 @@
             anchorSkew: true
         });
 
-        var pinInfoHtml = `
+        const circle = new naver.maps.Circle({
+            map: map,
+            radius: 1000,
+            fillColor: '#f0d0d0',
+            fillOpacity: 0.3,
+            strokeOpacity: 0.3
+        });
+
+        const pinInfoHtml = `
             <div class="pin-info">
                 <div><img src="./pin_plenty.svg"><p>100개 이상</p></div>
                 <div><img src="./pin_some.svg"><p>30 ~ 100개</p></div>
@@ -201,13 +220,12 @@
 
         naver.maps.Event.once(map, 'init_stylemap', function() {
             //customControl 객체 이용하기
-            var customControl = new naver.maps.CustomControl(pinInfoHtml, {
+            const customControl = new naver.maps.CustomControl(pinInfoHtml, {
                 position: naver.maps.Position.TOP_LEFT
             });
+            const customControlEl = customControl.getElement();
 
             customControl.setMap(map);
-
-            const customControlEl = customControl.getElement();
 
             setTimeout(() => {
                 customControlEl.classList.add('hide');
@@ -218,6 +236,22 @@
                 } else {
                     customControlEl.classList.add('hide');
                 }
+            });
+        });
+
+        const currentBtnHtml = `<div class="btn-wrapper">
+            <img src="./btn_current.svg">
+        </div>`;
+
+        naver.maps.Event.once(map, 'init_stylemap', function() {
+            const customControl = new naver.maps.CustomControl(currentBtnHtml, {
+                position: naver.maps.Position.BOTTOM_LEFT
+            });
+            const customControlEl = customControl.getElement();
+
+            customControl.setMap(map);
+            naver.maps.Event.addDOMListener(customControlEl, 'click', function() {
+                navigator.geolocation.getCurrentPosition(onSuccessGeolocation, onErrorGeolocation);
             });
         });
 
@@ -303,7 +337,7 @@
             const isExistOnly = document.getElementById('isExistOnly').checked;
             if (isExistOnly && (!remain_stat || remain_stat === 'empty' || remain_stat === undefined || remain_stat === null)) return;
 
-            var marker = new naver.maps.Marker({
+            const marker = new naver.maps.Marker({
                 position: new naver.maps.LatLng(lat, lng),
                 map: map,
                 icon: `./pin_${remain_stat === undefined || remain_stat === null ? 'empty' : remain_stat}.svg`
@@ -346,6 +380,10 @@
 
             map.setCenter(location);
             infoWindow.setContent('<div class="geo-location">' + 'geolocation.getCurrentPosition() 위치' + '</div>');
+            
+            // circle.setMap(map);
+            circle.setCenter(location);
+
 
             
             try {
@@ -365,7 +403,7 @@
         }
 
         function onErrorGeolocation() {
-            var center = map.getCenter();
+            const center = map.getCenter();
 
             infoWindow.setContent('<div class="geo-location error">' +
                 '<h5 style="margin-bottom:5px;color:#f00;">Geolocation failed!</h5>'+ "latitude: "+ center.lat() +"<br />longitude: "+ center.lng() +'</div>');
@@ -375,10 +413,13 @@
 
         window.onload = async function () {
             if (!navigator.geolocation) {
-                var center = map.getCenter();
+                const center = map.getCenter();
                 infoWindow.setContent('<div class="geo-location"><h5 style="margin-bottom:5px;color:#f00;">Geolocation not supported</h5></div>');
                 infoWindow.open(map, center);
+                return;
             }
+
+            navigator.geolocation.getCurrentPosition(onSuccessGeolocation, onErrorGeolocation);
         };
     </script>
 </body>
