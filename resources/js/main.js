@@ -235,7 +235,7 @@ let pos, map, infoWindow, circle;
 let markers = [];
 
 window.onload = async function () {
-    document.getElementById('map').style = `width: 99%; height: ${document.documentElement.clientHeight - 100}px;`;
+    document.getElementById('map').style = `width: 99%; height: ${document.documentElement.clientHeight - 150}px;`;
     document.getElementById('searchBtn').addEventListener('click', () => {
         searchAddressToCoordinate(document.getElementById('region').value);
     });

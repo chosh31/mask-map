@@ -37,15 +37,14 @@ footer {
     text-align: center;
     vertical-align: middle;
     line-height: 35px;
-    height: 35px;
+    height: 90px;
     font-size: 15px;
     color: white;
 }
 
 footer .btn {
-    display: inline-block;
     padding: 5px;
-    margin: 3px;
+    margin: auto;
     color: white;
     border: 1px solid white;
     border-radius: 3px;
