@@ -9,6 +9,7 @@ const REMAIN_STATS = {
     few: '2개 이상 30개 미만',
     empty: '1개 이하',
     break: '판매중지',
+    null: '정보없음'
 };
 const pinInfoHtml = `
     <div class="pin-info">
@@ -106,18 +107,50 @@ function hideOverlay() {
 }
 
 function convertDateString(date) {
+    if (!date) return '정보 없음';
+
     const yyyy = date.getFullYear();
     const mm = date.getMonth() < 9 ? "0" + (date.getMonth() + 1) : (date.getMonth() + 1);
     const dd = date.getDate() < 10 ? "0" + date.getDate() : date.getDate();
     const hh = date.getHours() < 10 ? "0" + date.getHours() : date.getHours();
     const min = date.getMinutes() < 10 ? "0" + date.getMinutes() : date.getMinutes();
     const ss = date.getSeconds() < 10 ? "0" + date.getSeconds() : date.getSeconds();
+    
     return `${hh}시 ${min}분 ${ss}초<br>(${yyyy}년 ${mm}월 ${dd}일)`;
+}
+
+function convertMsToString(milliseconds) {
+    const sec = parseInt(milliseconds / 1000 % 60);
+    const min = parseInt(milliseconds / 1000 / 60 % 60);
+    const hh = parseInt(milliseconds / 1000 / 60 / 60 % 24);
+    const day = parseInt(milliseconds / 1000 / 60 / 60 / 24);
+
+    const obj = {
+        day, hh, min, sec
+    }
+
+    return Object.getOwnPropertyNames(obj).filter(k => obj[k] > 0).map(k => {
+        switch(k) {
+            case 'sec':
+                return `${obj[k]}초`
+            case 'min':
+                return `${obj[k]}분`
+            case 'hh':
+                return `${obj[k]}시간`
+            case 'day':
+                return `${obj[k]}일`
+            default:
+                break;
+        }
+    }).join(' ');
 }
 
 function createGeolocation({addr, code, created_at, stock_at, name, remain_stat, lat, lng}) {
     const isExistOnly = document.getElementById('isExistOnly').checked;
+    const isLatestStock = document.getElementById('isLatestStock').checked;
+
     if (isExistOnly && (!remain_stat || remain_stat === 'break' || remain_stat === 'empty' || remain_stat === undefined || remain_stat === null)) return;
+    if (!stock_at || isLatestStock && new Date() - new Date(stock_at) > 60 * 60 * 1000) return;
 
     const marker = new naver.maps.Marker({
         position: new naver.maps.LatLng(lat, lng),
@@ -132,11 +165,11 @@ function createGeolocation({addr, code, created_at, stock_at, name, remain_stat,
         <div style="width:150px;text-align:center;padding:10px;">
             <a href="https://map.naver.com/?elat=${lat}&amp;elng=${lng}&amp;eelat=&amp;eelng=&amp;eText=${name}" target="_map_icon" class="btn_icon" onclick="return goOtherCR(this, 'a=loc_ipt*f.way&amp;r=2&amp;i=20488216&amp;g=mpi%3D09590520%3AqcT_%ED%8F%89%ED%99%94%EC%95%BD%EA%B5%AD&amp;u='+urlencode(urlexpand(this.href)));"><img width="39" height="18" title="길찾기" alt="길찾기" src="https://ssl.pstatic.net/sstatic/search/img3/btn_fndmap.gif"></a>
             <a>${name}</a>
-            <p>${remain_stat}</p>
-            <p>${REMAIN_STATS[remain_stat]}</p>
-            <p>입고시간 <br>${convertDateString(new Date(stock_at))}</p>
+            <p>${REMAIN_STATS[remain_stat ? remain_stat : 'null']}</p>
+            <p>${stock_at ? (new Date(stock_at) > new Date() ? `입고 전<br/>${convertMsToString(new Date(stock_at) - new Date())}` : `입고 후<br/>${convertMsToString(new Date() - new Date(stock_at))}`) : '-'}</p>
+            <p class="sub">입고시간: ${stock_at ? convertDateString(new Date(stock_at)) : '정보없음'}</p>
             <p class="sub">${addr}</p>
-            <p class="sub">업데이트: ${convertDateString(new Date(created_at))}</p>
+            <p class="sub">업데이트: ${created_at ? convertDateString(new Date(created_at)): '정보없음'}</p>
         </div>`);
         infoWindow.open(map, marker);
     });
