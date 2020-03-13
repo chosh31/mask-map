@@ -198,11 +198,8 @@ function onErrorGeolocation(e) {
     infoWindow.open(map, center);
 }
 
+let pos, map, infoWindow, circle;
 let markers = [];
-let pos;
-let map;
-let infoWindow;
-let circle;
 
 window.onload = async function () {
     document.getElementById('map').style = `width: 99%; height: ${document.documentElement.clientHeight - 100}px;`;
@@ -237,6 +234,10 @@ window.onload = async function () {
         fillColor: '#f0d0d0',
         fillOpacity: 0.3,
         strokeOpacity: 0.3
+    });
+
+    naver.maps.Event.addListener(map, 'click', () => {
+        infoWindow.close();
     });
 
     naver.maps.Event.once(map, 'init_stylemap', function() {
